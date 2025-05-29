@@ -8,6 +8,7 @@ import sqlite3
 from typing import Any
 from collections.abc import Callable, Iterator, Iterable
 
+
 class Scraper:
     def __init__(self, crawl_delay=(60, 15), headless=True):
         self.crawl_delay = crawl_delay
@@ -18,11 +19,13 @@ class Scraper:
     def start(self) -> None:
         self.playwright = playwright.sync_api.sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=self.headless)
-        self.context = self.browser.new_context(user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/123.0.0.0 Safari/537.36"
-        ))
+        self.context = self.browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/123.0.0.0 Safari/537.36"
+            )
+        )
 
     def close(self) -> None:
         if self.context:
@@ -46,8 +49,13 @@ class Scraper:
             return on_result(url, html, **kwargs)
         else:
             return html
-    
-    def fetch_pages(self, urls: Iterable[str], on_result: Callable[[str, str], Any] | None = None, **kwargs) -> dict:
+
+    def fetch_pages(
+        self,
+        urls: Iterable[str],
+        on_result: Callable[[str, str], Any] | None = None,
+        **kwargs,
+    ) -> dict:
         res = {}
 
         for i, url in enumerate(urls):
@@ -57,7 +65,7 @@ class Scraper:
             res[url] = self.fetch_page(url, on_result, **kwargs)
 
         return res
-    
+
     def __enter__(self):
         self.start()
         return self
@@ -70,7 +78,7 @@ def extract_metadata(soup: bs4.BeautifulSoup) -> dict:
     # Extract main title from <h1>
     h1_tag = soup.find("h1")
     title = h1_tag.contents[0].strip() if h1_tag else None
-    
+
     # Extract tune type from <h1 <span/>/>
     h1_tag_span = h1_tag.find("span", class_="detail")
     tunetype = h1_tag_span.get_text() if h1_tag_span else None
@@ -83,7 +91,7 @@ def extract_metadata(soup: bs4.BeautifulSoup) -> dict:
         aliases = [name.strip() for name in raw.split(",")]
 
     # Extract number of tunebooks
-    tunebooks = soup.find("div", {"id":"tunebooking"})
+    tunebooks = soup.find("div", {"id": "tunebooking"})
     if tunebooks:
         try:
             tunebooks = int(tunebooks.get_text().strip().split()[-2])
@@ -94,7 +102,7 @@ def extract_metadata(soup: bs4.BeautifulSoup) -> dict:
         "title": title,
         "aliases": aliases,
         "type": tunetype,
-        "tunebooks": tunebooks
+        "tunebooks": tunebooks,
     }
 
 
@@ -133,7 +141,7 @@ def extract_abc_versions(soup: bs4.BeautifulSoup) -> list[str]:
             i += 1
         except ValueError:
             break
-    
+
     return versions
 
 
@@ -148,7 +156,13 @@ def sanitize_title(title: str) -> str:
     return title[:100].lower()
 
 
-def parse_page(url: str, html: str, database: str | pathlib.Path, base_url: str, verbose: bool = False) -> None:
+def parse_page(
+    url: str,
+    html: str,
+    database: str | pathlib.Path,
+    base_url: str,
+    verbose: bool = False,
+) -> None:
     # Create beautiful soup
     soup = bs4.BeautifulSoup(html, "html.parser")
 
@@ -163,7 +177,7 @@ def parse_page(url: str, html: str, database: str | pathlib.Path, base_url: str,
 
     if verbose:
         print(f"{results['number']} - {results['title']}")
-    
+
     # Write to database
     if results["title"] not in [404, "Forbidden", "404"]:
         with sqlite3.connect(database) as con:
@@ -174,22 +188,28 @@ def parse_page(url: str, html: str, database: str | pathlib.Path, base_url: str,
                 "INSERT OR REPLACE "
                 "INTO tunes (TuneID, TuneTitle, TuneURL, TuneType, Tunebooks) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (tune_id, results["title"], results["url"], results["type"], results["tunebooks"])
+                (
+                    tune_id,
+                    results["title"],
+                    results["url"],
+                    results["type"],
+                    results["tunebooks"],
+                ),
             )
 
             # Delete previous aliases and versions
             con.execute("DELETE FROM TuneAliases WHERE TuneID = ?", (tune_id,))
             con.execute("DELETE FROM TuneVersions WHERE TuneID = ?", (tune_id,))
-            
+
             # Insert Tune aliases
             con.executemany(
                 "INSERT INTO TuneAliases (TuneID, TuneAlias) VALUES (?, ?)",
-                [(tune_id, a) for a in results["aliases"]]
+                [(tune_id, a) for a in results["aliases"]],
             )
 
             con.executemany(
                 "INSERT INTO TuneVersions (TuneID, TuneVersion) VALUES (?, ?)",
-                [(tune_id, v) for v in results["versions"]]
+                [(tune_id, v) for v in results["versions"]],
             )
 
             con.commit()
@@ -200,7 +220,7 @@ def url_generator(base_url: str, elements: Iterable[int]) -> Iterator[str]:
     # Add trailing slash
     if base_url[-1] != "/":
         base_url = base_url + "/"
-    
+
     for i in elements:
         yield base_url + f"{i}"
 
@@ -222,7 +242,7 @@ def create_database(database: str | pathlib.Path, schema: str | pathlib.Path) ->
 
 if __name__ == "__main__":
     # Create database
-    create_database("database.db", "database.sql")
+    # create_database("database.db", "database.sql")
 
     # Random generator (with fixed seed)
     prng = np.random.default_rng(4567890123)
@@ -234,4 +254,10 @@ if __name__ == "__main__":
     urls = url_generator(base_url, tunes)
 
     with Scraper() as s:
-        s.fetch_pages(urls, on_result=parse_page, database="database.db", base_url=base_url, verbose=True)
+        s.fetch_pages(
+            urls,
+            on_result=parse_page,
+            database="database.db",
+            base_url=base_url,
+            verbose=True,
+        )
