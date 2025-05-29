@@ -171,9 +171,10 @@ def parse_page(url: str, html: str, database: str | pathlib.Path, base_url: str,
 
             # Insert tune
             con.execute(
-                "INSERT OR REPLACE INTO tunes (TuneID, TuneTitle, TuneURL, Tunebooks) "
-                "VALUES (?, ?, ?, ?)",
-                (tune_id, results["title"], results["url"], results["tunebooks"])
+                "INSERT OR REPLACE "
+                "INTO tunes (TuneID, TuneTitle, TuneURL, TuneType, Tunebooks) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (tune_id, results["title"], results["url"], results["type"], results["tunebooks"])
             )
 
             # Delete previous aliases and versions
@@ -221,13 +222,13 @@ def create_database(database: str | pathlib.Path, schema: str | pathlib.Path) ->
 
 if __name__ == "__main__":
     # Create database
-    #create_database("database.db", "database.sql")
+    create_database("database.db", "database.sql")
 
     # Random generator (with fixed seed)
     prng = np.random.default_rng(4567890123)
 
     # Tunes
-    tunes = prng.permutation(np.arange(1, 25000))[3:]
+    tunes = prng.permutation(np.arange(1, 25000))
 
     base_url = "https://thesession.org/tunes/"
     urls = url_generator(base_url, tunes)
