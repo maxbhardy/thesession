@@ -4,6 +4,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS Tunes (
     TuneID INTEGER PRIMARY KEY,
     TuneTitle TEXT,
+    TuneAuthor TEXT,
     TuneURL TEXT UNIQUE,
     TuneType TEXT,
     Tunebooks INTEGER
@@ -22,7 +23,7 @@ CREATE TABLE IF NOT EXISTS TuneVersions (
 );
 
 CREATE VIEW IF NOT EXISTS TuneView AS
-SELECT TuneID, TuneTitle, TuneType, Tunebooks, NumAliases, NumVersions
+SELECT TuneID, TuneTitle, TuneAuthor, TuneType, Tunebooks, NumAliases, NumVersions
 FROM Tunes
 LEFT JOIN
     (SELECT TuneID, COUNT(TuneAlias) AS NumAliases FROM TuneAliases GROUP BY TuneID)

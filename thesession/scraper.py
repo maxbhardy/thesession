@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import pathlib
+import inspect
+import shutil
 import re
 import playwright.sync_api
 import bs4
@@ -59,6 +61,9 @@ class Scraper:
         res = {}
 
         for i, url in enumerate(urls):
+            # Determine whether this url should be fetched
+
+            # Sleep the crawl delay
             if i != 0:
                 self.sleep_crawl_delay()
 
@@ -83,6 +88,10 @@ def extract_metadata(soup: bs4.BeautifulSoup) -> dict:
     h1_tag_span = h1_tag.find("span", class_="detail")
     tunetype = h1_tag_span.get_text() if h1_tag_span else None
 
+    # Extract tune author
+    by_tag = soup.find("p", class_="manifest-item-title")
+    author = by_tag.get_text().strip().lstrip("By").strip() if by_tag else None
+
     # Extract "Also known as" names from <p class="info">
     info_p = soup.find("p", class_="info")
     aliases = []
@@ -94,15 +103,18 @@ def extract_metadata(soup: bs4.BeautifulSoup) -> dict:
     tunebooks = soup.find("div", {"id": "tunebooking"})
     if tunebooks:
         try:
-            tunebooks = int(tunebooks.get_text().strip().split()[-2])
+            tunebooks = int(
+                tunebooks.get_text().strip().split()[-2].strip().replace(",", "")
+            )
         except:
             tunebooks = None
 
     return {
         "title": title,
-        "aliases": aliases,
+        "author": author,
         "type": tunetype,
         "tunebooks": tunebooks,
+        "aliases": aliases,
     }
 
 
@@ -179,18 +191,19 @@ def parse_page(
         print(f"{results['number']} - {results['title']}")
 
     # Write to database
-    if results["title"] not in [404, "Forbidden", "404"]:
+    if results["title"] not in [404, "Forbidden", "404", 410, "410"]:
         with sqlite3.connect(database) as con:
             tune_id = results["number"]
 
             # Insert tune
             con.execute(
-                "INSERT OR REPLACE "
-                "INTO tunes (TuneID, TuneTitle, TuneURL, TuneType, Tunebooks) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO Tunes "
+                "(TuneID, TuneTitle, TuneAuthor, TuneURL, TuneType, Tunebooks) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     tune_id,
                     results["title"],
+                    results["author"],
                     results["url"],
                     results["type"],
                     results["tunebooks"],
@@ -225,11 +238,13 @@ def url_generator(base_url: str, elements: Iterable[int]) -> Iterator[str]:
         yield base_url + f"{i}"
 
 
-def create_database(database: str | pathlib.Path, schema: str | pathlib.Path) -> None:
+def create_database(
+    database: str | pathlib.Path, schema: str | pathlib.Path, overwrite: bool = False
+) -> None:
     database = pathlib.Path(database)
     schema = pathlib.Path(schema)
 
-    if database.exists():
+    if database.exists() and overwrite:
         database.unlink()
 
     with sqlite3.connect(database) as con:
@@ -242,7 +257,7 @@ def create_database(database: str | pathlib.Path, schema: str | pathlib.Path) ->
 
 if __name__ == "__main__":
     # Create database
-    # create_database("database.db", "database.sql")
+    create_database("database.db", "database.sql", overwrite=False)
 
     # Random generator (with fixed seed)
     prng = np.random.default_rng(4567890123)
@@ -250,6 +265,18 @@ if __name__ == "__main__":
     # Tunes
     tunes = prng.permutation(np.arange(1, 25000))
 
+    # Find tunes present in database
+    with sqlite3.connect("database.db") as con:
+        cursor = con.execute("SELECT TuneID FROM Tunes")
+        present = cursor.fetchall()
+        present = np.array([r[0] for r in present], dtype=int)
+
+    con.close()
+
+    # Return tunes that are not present in database
+    tunes = np.setdiff1d(tunes, present, assume_unique=True)
+
+    # Start scraping
     base_url = "https://thesession.org/tunes/"
     urls = url_generator(base_url, tunes)
 
