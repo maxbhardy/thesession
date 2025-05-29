@@ -260,7 +260,7 @@ if __name__ == "__main__":
     create_database("database.db", "database.sql", overwrite=False)
 
     # Random generator (with fixed seed)
-    prng = np.random.default_rng(4567890123)
+    prng = np.random.default_rng()
 
     # Tunes
     tunes = prng.permutation(np.arange(1, 25000))
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     base_url = "https://thesession.org/tunes/"
     urls = url_generator(base_url, tunes)
 
-    with Scraper() as s:
+    with Scraper(crawl_delay=(30,10)) as s:
         s.fetch_pages(
             urls,
             on_result=parse_page,
