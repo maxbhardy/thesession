@@ -1,1 +1,3 @@
 # thesession
+
+Après avoir déplacé le .git dans le bon dossier...
