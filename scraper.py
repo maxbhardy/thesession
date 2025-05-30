@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterator, Iterable
 
 
 class Scraper:
-    def __init__(self, crawl_delay=(60, 15), headless=True):
+    def __init__(self, crawl_delay: tuple[float, float] = (20, 40), headless: bool = True):
         self.crawl_delay = crawl_delay
         self.headless = headless
         self.browser = None
@@ -39,7 +39,7 @@ class Scraper:
 
     def sleep_crawl_delay(self) -> None:
         # Wait a duration distributed normally around mean with standard deviation std
-        time.sleep(np.random.normal(*self.crawl_delay))
+        time.sleep(np.random.uniform(*self.crawl_delay))
 
     def fetch_page(self, url: str, on_result=None, **kwargs) -> str:
         page = self.context.new_page()
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     base_url = "https://thesession.org/tunes/"
     urls = url_generator(base_url, tunes)
 
-    with Scraper(crawl_delay=(30,10)) as s:
+    with Scraper(crawl_delay=(20, 40)) as s:
         s.fetch_pages(
             urls,
             on_result=parse_page,
