@@ -47,7 +47,7 @@ class Scraper:
         html = page.content()
         page.close()
 
-        if on_result:
+        if html and on_result:
             return on_result(url, html, **kwargs)
         else:
             return html
