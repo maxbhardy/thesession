@@ -187,9 +187,6 @@ def parse_page(
     # Fetch ABC notations of the different versions
     results["versions"] = extract_abc_versions(soup)
 
-    if verbose:
-        print(f"{results['number']} - {results['title']}")
-
     # Write to database
     if results["title"] not in [404, "Forbidden", "404", 410, "410"]:
         with sqlite3.connect(database) as con:
@@ -227,6 +224,9 @@ def parse_page(
 
             con.commit()
         con.close()
+
+    if verbose:
+        print(f"{results['number']} - {results['title']}")
 
 
 def url_generator(base_url: str, elements: Iterable[int]) -> Iterator[str]:
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     base_url = "https://thesession.org/tunes/"
     urls = url_generator(base_url, tunes)
 
-    with Scraper(crawl_delay=(20, 40)) as s:
+    with Scraper(crawl_delay=(12, 18)) as s:
         s.fetch_pages(
             urls,
             on_result=parse_page,

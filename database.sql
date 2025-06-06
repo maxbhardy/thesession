@@ -22,12 +22,20 @@ CREATE TABLE IF NOT EXISTS TuneVersions (
     TuneVersion TEXT
 );
 
-CREATE VIEW IF NOT EXISTS TuneView AS
-SELECT TuneID, TuneTitle, TuneAuthor, TuneType, Tunebooks, NumAliases, NumVersions
+DROP VIEW IF EXISTS TuneView;
+CREATE VIEW TuneView AS
+SELECT
+    TuneID,
+    TuneTitle,
+    TuneAuthor,
+    TuneType,
+    Tunebooks,
+    coalesce(NumAliases, 0) AS NumAliases,
+    coalesce(NumVersions, 0) AS NumVersions
 FROM Tunes
 LEFT JOIN
-    (SELECT TuneID, COUNT(TuneAlias) AS NumAliases FROM TuneAliases GROUP BY TuneID)
+    (SELECT TuneID, count(TuneAlias) AS NumAliases FROM TuneAliases GROUP BY TuneID)
 USING (TuneID)
 LEFT JOIN
-    (SELECT TuneID, COUNT(TuneVersion) AS NumVersions FROM TuneVersions GROUP BY TuneID)
+    (SELECT TuneID, count(TuneVersion) AS NumVersions FROM TuneVersions GROUP BY TuneID)
 USING (TuneID);
