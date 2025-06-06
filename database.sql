@@ -39,3 +39,12 @@ USING (TuneID)
 LEFT JOIN
     (SELECT TuneID, count(TuneVersion) AS NumVersions FROM TuneVersions GROUP BY TuneID)
 USING (TuneID);
+
+DROP VIEW IF EXISTS TuneVersionView;
+CREATE VIEW TuneVersionView AS
+SELECT
+    TuneVersionID,
+    TuneID,
+    ROW_NUMBER() OVER (PARTITION BY TuneID ORDER BY TuneVersionID) AS TuneVersionNumber,
+    TuneVersion
+FROM TuneVersions;
