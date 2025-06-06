@@ -97,18 +97,18 @@ for row in tunes.itertuples():
         filename = f"{row.TuneVersionID}_{i}"
 
         if not (dest / filename).with_suffix(".mp3").exists():
-            print(row.TuneID, row.TuneTitle, row.TuneVersionID)
             try:
                 ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_mp3(
                     instrument=instr,
                     tempo=t,
-                    max_notes=1000,
+                    max_duration=300,
                     cut_silence=30,
                     wrap=w,
                     noise_amplitude=n,
                     vbr=8,
                     clean_files=True
                 )
+                print(row.TuneID, row.TuneTitle, row.TuneVersionID)
             except:
                 pass
 

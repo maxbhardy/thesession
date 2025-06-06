@@ -60,7 +60,7 @@ num_audio = 5
 root = pathlib.Path("audio")
 root.mkdir(exist_ok=True)
 
-for row in tunes.itertuples():
+for row in tunes.iloc[:1].itertuples():
     print(row.TuneID, row.TuneTitle, row.TuneVersionID)
 
     # Create destination directory
@@ -76,18 +76,16 @@ for row in tunes.itertuples():
 
     for i, (instr, t, w, n) in enumerate(zip(tmp_instruments, tmp_tempos, tmp_wraps, tmp_noises)):
         filename = f"{row.TuneVersionID}_{i}"
-        try:
-            ABCMusicConverter(row.TuneVersion, filename, dest).to_mp3(
-                instrument=instr,
-                tempo=t,
-                cut_silence=30,
-                wrap=w,
-                noise_amplitude=n,
-                vbr=8,
-                clean_files=True
-            )
-        except:
-            pass
-
+        
+        ABCMusicConverter(row.TuneVersion, filename, dest).to_mp3(
+            instrument=instr,
+            tempo=t,
+            max_duration=300,
+            cut_silence=30,
+            wrap=w,
+            noise_amplitude=n,
+            vbr=8,
+            clean_files=True
+        )
 
 

@@ -41,7 +41,7 @@ class ABCMusicConverter:
         midi_file: str | pathlib.Path | None = None,
         instrument: str | None = None,
         tempo: int | None = None,
-        max_notes: int | None = None,
+        max_duration: int | None = None, # If bigger than this number of notes (Cooleys = 70), do not export
     ) -> pathlib.Path:
         # Path to new midi file
         if midi_file is None:
@@ -62,17 +62,16 @@ class ABCMusicConverter:
             self.score.insert(0, music21.tempo.MetronomeMark(number=tempo))
 
         # Convert to midi
-        if max_notes:
-            score = self.score.flatten().notes.stream()[:max_notes]
+        if max_duration and self.score.highestTime > max_duration:
+            self.midi_file = None
+            return None
         else:
-            score = self.score
+            mf = music21.midi.translate.music21ObjectToMidiFile(self.score)
+            mf.open(self.midi_file, "wb")
+            mf.write()
+            mf.close()
 
-        mf = music21.midi.translate.music21ObjectToMidiFile(score)
-        mf.open(self.midi_file, "wb")
-        mf.write()
-        mf.close()
-
-        return self.midi_file
+            return self.midi_file
 
     def to_wav(
         self,
@@ -88,6 +87,10 @@ class ABCMusicConverter:
         # Create midi file if necessary
         if self.midi_file is None:
             self.to_midi(**kwargs)
+
+        # Stop if self.midi_file is still none (error)
+        if self.midi_file is None:
+            return None
 
         # Path to new wav file
         if wav_file is None:
@@ -156,6 +159,10 @@ class ABCMusicConverter:
         # Create wave file if necessary
         if self.wav_file is None:
             self.to_wav(**kwargs)
+
+        # Stop if self.wav_file is still none (error)
+        if self.wav_file is None:
+            return None
 
         # Path to new mp3 file
         if mp3_file is None:
