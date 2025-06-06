@@ -41,7 +41,7 @@ class ABCMusicConverter:
         midi_file: str | pathlib.Path | None = None,
         instrument: str | None = None,
         tempo: int | None = None,
-        repeat: int = 1,
+        max_notes: int | None = None,
     ) -> pathlib.Path:
         # Path to new midi file
         if midi_file is None:
@@ -62,7 +62,12 @@ class ABCMusicConverter:
             self.score.insert(0, music21.tempo.MetronomeMark(number=tempo))
 
         # Convert to midi
-        mf = music21.midi.translate.music21ObjectToMidiFile(self.score)
+        if max_notes:
+            score = self.score.flatten().notes.stream()[:max_notes]
+        else:
+            score = self.score
+
+        mf = music21.midi.translate.music21ObjectToMidiFile(score)
         mf.open(self.midi_file, "wb")
         mf.write()
         mf.close()
