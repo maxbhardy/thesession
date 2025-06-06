@@ -6,6 +6,8 @@ import music21
 import pandas as pd
 import numpy as np
 
+from mpi4py import MPI
+
 from audio_converter import ABCMusicConverter
 
 def sanitize_title(title: str) -> str:
@@ -35,25 +37,44 @@ instruments = [
 
 tempos = [i for i in range(120, 240, 20)]
 
+# Communication MPI
+mpi_comm = MPI.COMM_WORLD
+mpi_rank = mpi_comm.Get_rank()
+mpi_size = mpi_comm.Get_size()
 
-query = """
-SELECT TuneID, TuneVersionID, TuneTitle, TuneVersion
-FROM TuneVersionView
-JOIN Tunes USING (TuneID)
-WHERE TuneVersionNumber < 6
-ORDER BY TuneID, TuneVersionID
-"""
+# Only the main node query the database
+if mpi_rank == 0:
+    query = """
+    SELECT TuneID, TuneVersionID, TuneTitle, TuneVersion
+    FROM TuneVersionView
+    JOIN Tunes USING (TuneID)
+    WHERE TuneVersionNumber < 6
+    ORDER BY TuneID, TuneVersionID
+    """
 
 
-# Fetch tunes
-with sqlite3.connect("database2.db") as con:
-    tunes = pd.read_sql(query, con)
+    # Fetch tunes
+    with sqlite3.connect("database2.db") as con:
+        tunes = pd.read_sql(query, con)
 
-con.close()
+    con.close()
+    
+    # Get prng seed
+    seed = np.random.default_rng().bit_generator.seed_seq
+else:
+    tunes = None
+    seed = None
 
+# Send tunes and PRNG seed to all nodes
+tunes = mpi_comm.bcast(tunes, root=0)
+seed = mpi_comm.bcast(seed, root=0)
 
-# Random generator
-prng = np.random.default_rng()
+# Select subset
+indices = np.array_split(np.arange(len(tunes)), mpi_size)[mpi_rank]
+tunes = tunes.iloc[indices].copy()
+
+# Random generator (spawn from main seed)
+prng = np.random.default_rng(seed).spawn(mpi_size)[mpi_rank]
 num_audio = 5
 
 # Create audio files
@@ -77,7 +98,7 @@ for row in tunes.itertuples():
     for i, (instr, t, w, n) in enumerate(zip(tmp_instruments, tmp_tempos, tmp_wraps, tmp_noises)):
         filename = f"{row.TuneVersionID}_{i}"
         try:
-            ABCMusicConverter(row.TuneVersion, filename, dest).to_mp3(
+            ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_mp3(
                 instrument=instr,
                 tempo=t,
                 cut_silence=30,
