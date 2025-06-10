@@ -41,7 +41,7 @@ class ABCMusicConverter:
         midi_file: str | pathlib.Path | None = None,
         instrument: str | None = None,
         tempo: int | None = None,
-        max_duration: int | None = None, # If bigger than this number of notes (Cooleys = 70), do not export
+        max_notes: int | None = None, # If bigger than this number of notes (Cooleys = 70), do not export
     ) -> pathlib.Path:
         # Path to new midi file
         if midi_file is None:
@@ -62,7 +62,7 @@ class ABCMusicConverter:
             self.score.insert(0, music21.tempo.MetronomeMark(number=tempo))
 
         # Convert to midi
-        if max_duration and self.score.highestTime > max_duration:
+        if max_notes and self.score.highestTime > max_notes:
             self.midi_file = None
             return None
         else:
@@ -80,7 +80,8 @@ class ABCMusicConverter:
         sampling_rate: int = 16000,
         cut_silence: int | None = None,
         noise_amplitude: float | None = None,
-        wrap: float | None = None,
+        start: float | None = None,
+        duration: float | None = None,
         clean_files: bool = False,
         **kwargs
     ) -> pathlib.Path:
@@ -120,7 +121,7 @@ class ABCMusicConverter:
 
         subprocess.run(command, check=True, capture_output=True)
 
-        if cut_silence or noise_amplitude or wrap:
+        if cut_silence or start or duration or noise_amplitude:
             signal, sr = librosa.load(self.wav_file, sr=sampling_rate)
 
         # cut silence
@@ -128,10 +129,17 @@ class ABCMusicConverter:
             signal, _ = librosa.effects.trim(signal, top_db=cut_silence)
 
         # Wrap around itself
-        if wrap:
+        if start:
             length = len(signal)
-            index = int(wrap * length)
-            signal = np.concatenate([signal, signal])[index:index+length]
+            new_start = int(start * length)
+            signal = np.concatenate([signal, signal])[new_start:new_start+length]
+
+        # Repeat until duration
+        if duration:
+            length = len(signal)
+            expected_length = int(np.round(duration * sampling_rate))
+            repeats = int(np.ceil(expected_length / length))
+            signal = np.tile(signal, repeats)[:expected_length]
 
         # Add noise
         if noise_amplitude:  
@@ -139,7 +147,7 @@ class ABCMusicConverter:
             signal = signal + noise
 
         # Write new file
-        if cut_silence or wrap or noise_amplitude:
+        if cut_silence or start or duration or noise_amplitude:
             soundfile.write(self.wav_file, signal, sampling_rate)
 
 
