@@ -15,13 +15,13 @@ val_subset = dataset.loc[dataset["dataset"] == "validation", "tune"]
 train_subset = dataset.loc[dataset["dataset"] == "train", "tune"]
 
 train_dataset = TheSessionDataset(
-    "audio_flac", subset=train_subset, sampling_rate=48000, fmt=".flac"
+    "audio_flac", subset=train_subset, sampling_rate=48000, fmt=".flac", backend="soundfile"
 )
 val_dataset = TheSessionDataset(
-    "audio_flac", subset=val_subset, sampling_rate=48000, fmt=".flac"
+    "audio_flac", subset=val_subset, sampling_rate=48000, fmt=".flac", backend="soundfile"
 )
 test_dataset = TheSessionDataset(
-    "audio_flac", subset=test_subset, sampling_rate=48000, fmt=".flac"
+    "audio_flac", subset=test_subset, sampling_rate=48000, fmt=".flac", backend="soundfile"
 )
 
 print("Training data", len(train_dataset))
