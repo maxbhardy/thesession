@@ -21,7 +21,13 @@ class ABCMusicConverter:
         if hasattr(v, "bestName")
     }
 
-    def __init__(self, abc: str, filename: str, destination: str | pathlib.Path = ".", prng: np.random.Generator | None = None):
+    def __init__(
+        self,
+        abc: str,
+        filename: str,
+        destination: str | pathlib.Path = ".",
+        prng: np.random.Generator | None = None,
+    ):
         self.destination = pathlib.Path(destination)
         self.filename = filename
 
@@ -41,7 +47,9 @@ class ABCMusicConverter:
         midi_file: str | pathlib.Path | None = None,
         instrument: str | None = None,
         tempo: int | None = None,
-        max_notes: int | None = None, # If bigger than this number of notes (Cooleys = 70), do not export
+        max_notes: (
+            int | None
+        ) = None,  # If bigger than this number of notes (Cooleys = 70), do not export
     ) -> pathlib.Path:
         # Path to new midi file
         if midi_file is None:
@@ -83,7 +91,7 @@ class ABCMusicConverter:
         start: float | None = None,
         duration: float | None = None,
         clean_files: bool = False,
-        **kwargs
+        **kwargs,
     ) -> pathlib.Path:
         # Create midi file if necessary
         if self.midi_file is None:
@@ -132,7 +140,7 @@ class ABCMusicConverter:
         if start:
             length = len(signal)
             new_start = int(start * length)
-            signal = np.concatenate([signal, signal])[new_start:new_start+length]
+            signal = np.concatenate([signal, signal])[new_start : new_start + length]
 
         # Repeat until duration
         if duration:
@@ -142,14 +150,13 @@ class ABCMusicConverter:
             signal = np.tile(signal, repeats)[:expected_length]
 
         # Add noise
-        if noise_amplitude:  
+        if noise_amplitude:
             noise = self.prng.normal(0, noise_amplitude, signal.shape[0])
             signal = signal + noise
 
         # Write new file
         if cut_silence or start or duration or noise_amplitude:
             soundfile.write(self.wav_file, signal, sampling_rate)
-
 
         if clean_files and self.midi_file.exists():
             self.midi_file.unlink()
@@ -162,7 +169,7 @@ class ABCMusicConverter:
         vbr: int | None = None,
         cbr: int | None = None,
         clean_files: bool = False,
-        **kwargs
+        **kwargs,
     ) -> pathlib.Path:
         # Create wave file if necessary
         if self.wav_file is None:
@@ -197,7 +204,7 @@ class ABCMusicConverter:
 
         if clean_files and self.midi_file.exists():
             self.midi_file.unlink()
-        
+
         if clean_files and self.wav_file.exists():
             self.wav_file.unlink()
 

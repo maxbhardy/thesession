@@ -12,7 +12,9 @@ from collections.abc import Callable, Iterator, Iterable
 
 
 class Scraper:
-    def __init__(self, crawl_delay: tuple[float, float] = (20, 40), headless: bool = True):
+    def __init__(
+        self, crawl_delay: tuple[float, float] = (20, 40), headless: bool = True
+    ):
         self.crawl_delay = crawl_delay
         self.headless = headless
         self.browser = None
