@@ -5,7 +5,7 @@ import torch
 
 from thesession.dataset import TheSessionDataset
 from thesession.model import TheSessionModel
-from thesession.training import train_model
+from thesession.training import train_model, NTXentLoss
 
 # Datasets
 dataset = pd.read_csv("dataset.csv")
@@ -36,17 +36,19 @@ model.toggle_gradients(False)
 model.toggle_gradients(True, ["clap_model.model.audio_projection"])
 
 # Training
+criterion = NTXentLoss(temperature=0.01)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 
 train_model(
     model,
     train_dataset,
     val_dataset,
+    criterion,
     optimizer,
     epochs=10,
     device="cuda",
     batch_size=32,
-    num_workers=4,
+    num_workers=5,
     destination="training/transfer_learning_audio_projection.csv",
     best_model_path="models/transfer_learning_audio_projection.pt",
 )

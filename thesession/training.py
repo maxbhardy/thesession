@@ -8,39 +8,55 @@ import torch.nn.functional as F
 
 
 # Loss function
-def nt_xent_loss(z1, z2, temperature=0.07):
-    """
-    Contrastive loss using implicit negatives (NT-Xent).
-    Args:
-        z1: Tensor of shape (N, D) – embeddings from view 1 (e.g., anchors)
-        z2: Tensor of shape (N, D) – embeddings from view 2 (e.g., positives)
-    Returns:
-        Scalar contrastive loss
-    """
-    batch_size = z1.size(0)
+class NTXentLoss(torch.nn.Module):
+    log_temperature: torch.Tensor
 
-    # Concatenate for full 2N x D
-    z = torch.cat([z1, z2], dim=0)  # shape: (2N, D)
+    def __init__(self, temperature: float = 0.07, learn_temperature: bool = False):
+        super().__init__()
 
-    # Cosine similarity (2N x 2N)
-    sim = F.cosine_similarity(z[None, :, :], z[:, None, :], dim=-1)
+        if learn_temperature:
+            self.log_tempemperature = torch.nn.Parameter(torch.tensor(np.log(temperature)))
+        else:
+            self.register_buffer("log_temperature", torch.tensor(np.log(temperature)))
+    
+    @property
+    def temperature(self) -> torch.Tensor:
+        return torch.exp(self.log_temperature)
 
-    # Mask self-similarity
-    mask = torch.eye(2 * batch_size, device=z.device).bool()
-    sim.masked_fill_(mask, -float("inf"))  # ignore similarity to self
 
-    # Targets: for i in 0..N-1, positive pair is i<->i+N and i+N<->i
-    targets = torch.cat(
-        [torch.arange(batch_size, 2 * batch_size), torch.arange(0, batch_size)]
-    ).to(z.device)
+    def forward(self, z1: torch.Tensor, z2: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Contrastive loss using implicit negatives (NT-Xent).
+        Args:
+            z1: Tensor of shape (N, D) – embeddings from view 1 (e.g., anchors)
+            z2: Tensor of shape (N, D) – embeddings from view 2 (e.g., positives)
+        Returns:
+            Scalar contrastive loss
+        """
+        batch_size = z1.size(0)
 
-    loss = F.cross_entropy(sim / temperature, targets)
+        # Concatenate for full 2N x D
+        z = torch.cat([z1, z2], dim=0)  # shape: (2N, D)
 
-    # Get correct answers for computing accuracy
-    # Divided by 2 as both z1 -> z2 and z2 -> z1 are checked
-    correct = torch.sum(torch.argmax(sim, dim=1) == targets).float() / 2.0
+        # Cosine similarity (2N x 2N)
+        sim = F.cosine_similarity(z[None, :, :], z[:, None, :], dim=-1)
 
-    return loss, correct
+        # Mask self-similarity
+        mask = torch.eye(2 * batch_size, device=z.device).bool()
+        sim.masked_fill_(mask, -float("inf"))  # ignore similarity to self
+
+        # Targets: for i in 0..N-1, positive pair is i<->i+N and i+N<->i
+        targets = torch.cat(
+            [torch.arange(batch_size, 2 * batch_size), torch.arange(0, batch_size)]
+        ).to(z.device)
+
+        loss = F.cross_entropy(sim / self.temperature, targets)
+
+        # Get correct answers for computing accuracy
+        # Divided by 2 as both z1 -> z2 and z2 -> z1 are checked
+        correct = torch.sum(torch.argmax(sim, dim=1) == targets).float() / 2.0
+
+        return loss, correct
 
 
 # Training function
@@ -48,8 +64,8 @@ def train_model(
     model,
     train_dataset,
     val_dataset,
+    criterion,
     optimizer,
-    temperature=0.07,
     epochs=10,
     device=None,
     verbose=True,
@@ -149,7 +165,7 @@ def train_model(
             z2 = model(x2)
 
             # Compute loss
-            batch_loss, batch_correct = nt_xent_loss(z1, z2, temperature=temperature)
+            batch_loss, batch_correct = criterion(z1, z2)
 
             batch_loss.backward()
             optimizer.step()
@@ -183,9 +199,7 @@ def train_model(
                 z2 = model(x2)
 
                 # Compute loss
-                batch_loss, batch_correct = nt_xent_loss(
-                    z1, z2, temperature=temperature
-                )
+                batch_loss, batch_correct = criterion(z1, z2)
 
                 val_loss += batch_loss.item()
                 correct += batch_correct.item()
@@ -213,7 +227,7 @@ def train_model(
         if destination:
             with open(destination, "a") as f:
                 f.write(
-                    f"{epoch},{avg_train_loss},{avg_val_loss},{train_accuracy},{val_accuracy}"
+                    f"\n{epoch},{avg_train_loss},{avg_val_loss},{train_accuracy},{val_accuracy}"
                 )
 
     # End time counter
@@ -235,3 +249,91 @@ def train_model(
     )
 
     return res
+
+
+
+# Function to evaluate model
+def eval_model(
+    model,
+    test_dataset,
+    criterion,
+    device=None,
+    verbose=True,
+    batch_size=32,
+    num_workers=0,
+):
+    """Evaluate a pytorch model on test data
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to be tested
+    test_dataset : torch.utils.data.Dataset
+        The dataset onto which the model is tested
+    criterion : torch.nn.Module
+        The module that computes the test loss (e.g. CrossEntropyLoss)
+    device : torch.device, default: None
+        The device onto which the model is tested
+    verbose : bool, default: True
+        Whether a summary of the test is printed.
+    num_workers : int, default: 4
+        Number of workers to use for loading test data.
+    batch_size: int, default: 32
+        The number of data points to load with each batch.
+
+    Returns
+    -------
+
+    """
+    # Load test data
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers
+    )
+
+    # Compute test accuracy
+    model.eval()
+
+    test_loss = 0.0
+    correct = 0.0
+
+    # Start time counter
+    start_time = time.perf_counter()
+
+    with torch.no_grad():
+        for i, (x1, x2) in enumerate(test_loader):
+            if verbose:
+                print(f"Test batch {i+1}/{len(test_loader)}", end="\r")
+
+            if device is not None:
+                x1 = x1.to(device)
+                x2 = x2.to(device)
+
+            z1 = model(x1)
+            z2 = model(x2)
+
+            # Compute loss and correct items
+            batch_loss, batch_correct = criterion(z1, z2)
+
+            test_loss += batch_loss.item()
+            correct += batch_correct.item()
+
+    avg_test_loss = test_loss / len(test_loader)
+    test_accuracy = correct / len(test_dataset)
+
+    # End time counter
+    end_time = time.perf_counter()
+    duration = end_time - start_time
+
+    if verbose:
+        print(f"Duration of evaluation on test data: {duration:0.2f} seconds")
+
+    if verbose:
+        print(
+            f"Test Loss: {avg_test_loss:.4f} | "
+            f"Test Accuracy: {test_accuracy:.4f} | "
+        )
+
+    return avg_test_loss, test_accuracy
