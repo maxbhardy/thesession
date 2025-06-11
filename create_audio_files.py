@@ -6,7 +6,7 @@ import music21
 import pandas as pd
 import numpy as np
 
-from audio_converter import ABCMusicConverter
+from thesession.converter import ABCMusicConverter
 
 def sanitize_title(title: str) -> str:
     # Replace spaces with underscores

@@ -8,7 +8,7 @@ import numpy as np
 
 from mpi4py import MPI
 
-from audio_converter import ABCMusicConverter
+from thesession.converter import ABCMusicConverter
 
 def sanitize_title(title: str) -> str:
     # Replace spaces with underscores
