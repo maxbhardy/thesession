@@ -41,7 +41,7 @@ class TheSessionDataset(torch.utils.data.Dataset):
         records = {}
 
         for file in self.root_dir.glob(f"**/*{fmt}"):
-            if (subset is not None) or (file.parent.stem in subset):
+            if (subset is None) or (file.parent.stem in subset):
                 record_id = file.stem.split("_")[0]
 
                 if record_id in records:

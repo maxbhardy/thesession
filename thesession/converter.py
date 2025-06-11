@@ -210,7 +210,7 @@ class ABCMusicConverter:
             self.wav_file.unlink()
 
         return self.mp3_file
-    
+
     def to_flac(
         self,
         flac_file: str | pathlib.Path | None = None,
@@ -255,4 +255,3 @@ class ABCMusicConverter:
             self.wav_file.unlink()
 
         return self.flac_file
-    
