@@ -96,7 +96,7 @@ for row in tunes.itertuples():
     for i, (instr, t, s, n) in enumerate(zip(tmp_instruments, tmp_tempos, tmp_starts, tmp_noises)):
         filename = f"{row.TuneVersionID}_{i}"
 
-        if not (dest / filename).with_suffix(".mp3").exists():
+        if not (dest / filename).with_suffix(".flac").exists():
             try:
                 ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_flac(
                     instrument=instr,
