@@ -57,10 +57,10 @@ prng = np.random.default_rng()
 num_audio = 5
 
 # Create audio files
-root = pathlib.Path("audio")
+root = pathlib.Path("audio_flac")
 root.mkdir(exist_ok=True)
 
-for row in tunes.iloc[:1].itertuples():
+for row in tunes.iloc[:5].itertuples():
     print(row.TuneID, row.TuneTitle, row.TuneVersionID)
 
     # Create destination directory
@@ -71,20 +71,23 @@ for row in tunes.iloc[:1].itertuples():
     # Define the selected instrument and tempo for the tune
     tmp_instruments = prng.choice(instruments, num_audio, replace=False, shuffle=True)
     tmp_tempos = prng.integers(120, 240, size=num_audio)
-    tmp_wraps = prng.uniform(0, 1, size=num_audio)
+    tmp_starts = prng.uniform(0, 1, size=num_audio)
     tmp_noises = prng.uniform(0, 0.002, size=num_audio)
 
-    for i, (instr, t, w, n) in enumerate(zip(tmp_instruments, tmp_tempos, tmp_wraps, tmp_noises)):
+    for i, (instr, t, s, n) in enumerate(zip(tmp_instruments, tmp_tempos, tmp_starts, tmp_noises)):
         filename = f"{row.TuneVersionID}_{i}"
         
-        ABCMusicConverter(row.TuneVersion, filename, dest).to_mp3(
+        ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_flac(
             instrument=instr,
             tempo=t,
-            max_duration=300,
+            max_notes=300,
             cut_silence=30,
-            wrap=w,
+            start=s,
+            duration=60, # 1 minute
             noise_amplitude=n,
-            vbr=8,
+            sampling_rate=16000,
+            audio_channels=1,
+            #vbr=8,
             clean_files=True
         )
 

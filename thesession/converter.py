@@ -14,6 +14,7 @@ class ABCMusicConverter:
     midi_file: pathlib.Path | None
     wav_file: pathlib.Path | None
     mp3_file: pathlib.Path | None
+    flac_file: pathlib.Path | None
 
     instruments: dict = {
         k.lower(): v
@@ -85,7 +86,7 @@ class ABCMusicConverter:
         self,
         wav_file: str | pathlib.Path | None = None,
         sound_font: str | pathlib.Path = "GeneralUser-GS.sf2",
-        sampling_rate: int = 16000,
+        sampling_rate: int = 48000,
         cut_silence: int | None = None,
         noise_amplitude: float | None = None,
         start: float | None = None,
@@ -209,3 +210,49 @@ class ABCMusicConverter:
             self.wav_file.unlink()
 
         return self.mp3_file
+    
+    def to_flac(
+        self,
+        flac_file: str | pathlib.Path | None = None,
+        sampling_rate: int = 48000,
+        audio_channels: int | None = None,
+        clean_files: bool = False,
+        **kwargs,
+    ) -> pathlib.Path:
+        # Create wave file if necessary
+        if self.wav_file is None:
+            self.to_wav(sampling_rate=sampling_rate, **kwargs)
+
+        # Stop if self.wav_file is still none (error)
+        if self.wav_file is None:
+            return None
+
+        # Path to new mp3 file
+        if flac_file is None:
+            self.flac_file = (self.destination / self.filename).with_suffix(".flac")
+        else:
+            self.flac_file = pathlib.Path(flac_file)
+
+        # Remove file if exists
+        if self.flac_file.exists():
+            self.flac_file.unlink()
+
+        # Define command
+        command = ["ffmpeg", "-i", str(self.wav_file), "-ar", str(sampling_rate)]
+
+        # Write audio channels
+        if audio_channels:
+            command += ["-ac", str(audio_channels)]
+
+        command.append(str(self.flac_file))
+
+        subprocess.run(command, check=True, capture_output=True)
+
+        if clean_files and self.midi_file.exists():
+            self.midi_file.unlink()
+
+        if clean_files and self.wav_file.exists():
+            self.wav_file.unlink()
+
+        return self.flac_file
+    

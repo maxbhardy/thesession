@@ -1,4 +1,3 @@
-**/audio
-**/audio1
+**/audio*
 **/__pycache__
 *.db

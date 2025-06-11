@@ -11,6 +11,7 @@ class TheSessionDataset(torch.utils.data.Dataset):
     prng: np.random.Generator
     records: list[list[pathlib.Path]]
     device: str | None
+    backend: str | None
 
     def __init__(
         self,
@@ -19,10 +20,13 @@ class TheSessionDataset(torch.utils.data.Dataset):
         prng: np.random.Generator | int | None = None,
         subset: Iterable | None = None,
         device: str | None = None,
+        fmt: str = ".mp3",
+        backend: str | None = None,
     ):
         self.root_dir = pathlib.Path(root_dir)
         self.sampling_rate = sampling_rate
         self.device = device
+        self.backend = backend
 
         if isinstance(prng, np.random.Generator):
             self.prng = prng
@@ -36,7 +40,7 @@ class TheSessionDataset(torch.utils.data.Dataset):
         # Regroup recordings of the same recordss together
         records = {}
 
-        for file in self.root_dir.glob("**/*.mp3"):
+        for file in self.root_dir.glob(f"**/*{fmt}"):
             if (subset is not None) or (file.parent.stem in subset):
                 record_id = file.stem.split("_")[0]
 
@@ -52,7 +56,7 @@ class TheSessionDataset(torch.utils.data.Dataset):
         return len(self.records)
 
     def load_audio(self, filepath: str | pathlib.Path) -> torch.Tensor:
-        waveform, sr = torchaudio.load(filepath)
+        waveform, sr = torchaudio.load(filepath, backend=self.backend)
 
         if self.device:
             waveform = waveform.to(self.device)

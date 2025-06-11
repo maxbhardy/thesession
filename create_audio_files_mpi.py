@@ -78,7 +78,7 @@ prng = np.random.default_rng(seed).spawn(mpi_size)[mpi_rank]
 num_audio = 5
 
 # Create audio files
-root = pathlib.Path("audio")
+root = pathlib.Path("audio_flac")
 root.mkdir(exist_ok=True)
 
 for row in tunes.itertuples():
@@ -98,15 +98,16 @@ for row in tunes.itertuples():
 
         if not (dest / filename).with_suffix(".mp3").exists():
             try:
-                ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_mp3(
+                ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_flac(
                     instrument=instr,
                     tempo=t,
                     max_notes=300,
                     cut_silence=30,
                     start=s,
-                    duration=120, # 2 minutes
+                    duration=60, # 1 minute
                     noise_amplitude=n,
-                    vbr=8,
+                    sampling_rate=16000,
+                    audio_channels=1,
                     clean_files=True
                 )
                 print(row.TuneID, row.TuneTitle, row.TuneVersionID)
