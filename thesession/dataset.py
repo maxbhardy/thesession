@@ -10,6 +10,7 @@ class TheSessionDataset(torch.utils.data.Dataset):
     sampling_rate: int
     prng: np.random.Generator
     records: list[list[pathlib.Path]]
+    device: str | None
 
     def __init__(
         self,
@@ -17,9 +18,11 @@ class TheSessionDataset(torch.utils.data.Dataset):
         sampling_rate: int = 16000,
         prng: np.random.Generator | int | None = None,
         subset: Iterable | None = None,
+        device: str | None = None,
     ):
         self.root_dir = pathlib.Path(root_dir)
         self.sampling_rate = sampling_rate
+        self.device = device
 
         if isinstance(prng, np.random.Generator):
             self.prng = prng
@@ -50,6 +53,10 @@ class TheSessionDataset(torch.utils.data.Dataset):
 
     def load_audio(self, filepath: str | pathlib.Path) -> torch.Tensor:
         waveform, sr = torchaudio.load(filepath)
+
+        if self.device:
+            waveform = waveform.to(self.device)
+
         if sr != self.sampling_rate:
             waveform = torchaudio.functional.resample(waveform, sr, self.sampling_rate)
 
