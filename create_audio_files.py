@@ -8,6 +8,7 @@ import numpy as np
 
 from thesession.converter import ABCMusicConverter
 
+
 def sanitize_title(title: str) -> str:
     # Replace spaces with underscores
     title = title.replace(" ", "_")
@@ -18,10 +19,9 @@ def sanitize_title(title: str) -> str:
     # Optionally, truncate length to e.g. 100 chars
     return title[:100].lower()
 
+
 instruments: dict = {
-    k.lower(): v
-    for k, v in vars(music21.instrument).items()
-    if hasattr(v, "bestName")
+    k.lower(): v for k, v in vars(music21.instrument).items() if hasattr(v, "bestName")
 }
 
 instruments = [
@@ -67,28 +67,28 @@ for row in tunes.iloc[:5].itertuples():
     title = sanitize_title(row.TuneTitle)
     dest = root / f"{row.TuneID}_{title}"
     dest.mkdir(exist_ok=True)
-    
+
     # Define the selected instrument and tempo for the tune
     tmp_instruments = prng.choice(instruments, num_audio, replace=False, shuffle=True)
     tmp_tempos = prng.integers(120, 240, size=num_audio)
     tmp_starts = prng.uniform(0, 1, size=num_audio)
     tmp_noises = prng.uniform(0, 0.002, size=num_audio)
 
-    for i, (instr, t, s, n) in enumerate(zip(tmp_instruments, tmp_tempos, tmp_starts, tmp_noises)):
+    for i, (instr, t, s, n) in enumerate(
+        zip(tmp_instruments, tmp_tempos, tmp_starts, tmp_noises)
+    ):
         filename = f"{row.TuneVersionID}_{i}"
-        
+
         ABCMusicConverter(row.TuneVersion, filename, dest, prng).to_flac(
             instrument=instr,
             tempo=t,
             max_notes=300,
             cut_silence=30,
             start=s,
-            duration=60, # 1 minute
+            duration=60,  # 1 minute
             noise_amplitude=n,
             sampling_rate=16000,
             audio_channels=1,
-            #vbr=8,
-            clean_files=True
+            # vbr=8,
+            clean_files=True,
         )
-
-

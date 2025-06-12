@@ -45,10 +45,19 @@ model = TheSessionModel()
 model.load("models/step2_best.pt")
 
 model.toggle_gradients(False, verbose=False)
-model.toggle_gradients(True, ["clap_model.model.audio_projection"], verbose=False)
+model.toggle_gradients(
+    True,
+    [
+        "clap_model.model.audio_branch.norm",
+        "clap_model.model.audio_branch.tscam_conv",
+        "clap_model.model.audio_branch.head",
+        "clap_model.model.audio_projection",
+    ],
+    verbose=True,
+)
 
 # Training
-criterion = NTXentLoss(temperature=0.001)
+criterion = NTXentLoss(temperature=0.01)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=1e-4)
 
 train_model(
