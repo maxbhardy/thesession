@@ -42,14 +42,14 @@ print("Test data", len(test_dataset))
 
 # Model
 model = TheSessionModel()
-model.load("models/step1_best.pt")
+model.load("models/step2_best.pt")
 
 model.toggle_gradients(False, verbose=False)
 model.toggle_gradients(True, ["clap_model.model.audio_projection"], verbose=False)
 
 # Training
-criterion = NTXentLoss(temperature=0.01)
-optimizer = torch.optim.Adam(model.parameters(), lr=2e-4, weight_decay=1e-4)
+criterion = NTXentLoss(temperature=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=1e-4)
 
 train_model(
     model,
@@ -61,7 +61,7 @@ train_model(
     device="cuda",
     batch_size=32,
     num_workers=6,
-    history_path="training/step2.csv",
-    best_model_path="models/step2_best.pt",
-    last_model_path="models/step2_last.pt",
+    history_path="training/step3.csv",
+    best_model_path="models/step3_best.pt",
+    last_model_path="models/step3_last.pt",
 )
