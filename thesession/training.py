@@ -15,16 +15,19 @@ class NTXentLoss(torch.nn.Module):
         super().__init__()
 
         if learn_temperature:
-            self.log_tempemperature = torch.nn.Parameter(torch.tensor(np.log(temperature)))
+            self.log_tempemperature = torch.nn.Parameter(
+                torch.tensor(np.log(temperature))
+            )
         else:
             self.register_buffer("log_temperature", torch.tensor(np.log(temperature)))
-    
+
     @property
     def temperature(self) -> torch.Tensor:
         return torch.exp(self.log_temperature)
 
-
-    def forward(self, z1: torch.Tensor, z2: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, z1: torch.Tensor, z2: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Contrastive loss using implicit negatives (NT-Xent).
         Args:
@@ -71,8 +74,9 @@ def train_model(
     verbose=True,
     batch_size=32,
     num_workers=0,
-    best_model_path="models/best_model.pt",
-    destination=None,
+    best_model_path=None,
+    last_model_path=None,
+    history_path=None,
 ):
     """Train a pytorch model
 
@@ -106,9 +110,14 @@ def train_model(
         and the model accuracy on the training and validation data.
 
     """
-    # Path to save the best model
-    best_model_path = pathlib.Path(best_model_path)
-    best_model_path.parent.mkdir(exist_ok=True)
+    # Path to save the best and last models
+    if best_model_path:
+        best_model_path = pathlib.Path(best_model_path)
+        best_model_path.parent.mkdir(exist_ok=True, parents=True)
+
+    if last_model_path:
+        last_model_path = pathlib.Path(last_model_path)
+        last_model_path.parent.mkdir(exist_ok=True, parents=True)
 
     # Definition of data loaders
     train_loader = torch.utils.data.DataLoader(
@@ -134,12 +143,20 @@ def train_model(
     start_time = time.perf_counter()
 
     # Write destination file
-    if destination:
-        destination = pathlib.Path(destination)
-        destination.parent.mkdir(parents=True, exist_ok=True)
+    if history_path:
+        history_path = pathlib.Path(history_path)
+        history_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not destination.exists():
-            with open(destination, "w") as f:
+        if history_path.exists():
+            history = pd.read_csv(history_path, index_col=0)
+            assert len(history) < epochs
+
+            train_loss_array[: len(history)] = history["train_loss"]
+            val_loss_array[: len(history)] = history["val_loss"]
+            train_accuracy_array[: len(history)] = history["train_accuracy"]
+            val_accuracy_array[: len(history)] = history["val_accuracy"]
+        else:
+            with open(history_path, "w") as f:
                 f.write("epoch,train_loss,val_loss,train_accuracy,val_accuracy")
 
     # Iteration over the epochs
@@ -210,7 +227,7 @@ def train_model(
         val_loss_array[epoch] = avg_val_loss
         val_accuracy_array[epoch] = val_accuracy
 
-        if avg_val_loss == np.min(val_loss_array[: epoch + 1]):
+        if best_model_path and (avg_val_loss == np.min(val_loss_array[: epoch + 1])):
             torch.save(model.state_dict(), best_model_path)
 
         # Printing a summary
@@ -223,12 +240,16 @@ def train_model(
                 f"Valid. Accuracy: {val_accuracy:.4f} | "
             )
 
-        # Exporting summary to destination
-        if destination:
-            with open(destination, "a") as f:
+        # Exporting summary to history_path
+        if history_path:
+            with open(history_path, "a") as f:
                 f.write(
                     f"\n{epoch},{avg_train_loss},{avg_val_loss},{train_accuracy},{val_accuracy}"
                 )
+
+    # Save last model weights
+    if last_model_path:
+        torch.save(model.state_dict(), last_model_path)
 
     # End time counter
     end_time = time.perf_counter()
@@ -249,7 +270,6 @@ def train_model(
     )
 
     return res
-
 
 
 # Function to evaluate model
@@ -287,10 +307,7 @@ def eval_model(
     """
     # Load test data
     test_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
+        test_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
     )
 
     # Compute test accuracy

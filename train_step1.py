@@ -15,13 +15,25 @@ val_subset = dataset.loc[dataset["dataset"] == "validation", "tune"]
 train_subset = dataset.loc[dataset["dataset"] == "train", "tune"]
 
 train_dataset = TheSessionDataset(
-    "audio_flac", subset=train_subset, sampling_rate=48000, fmt=".flac", backend="soundfile"
+    "audio_flac",
+    subset=train_subset,
+    sampling_rate=48000,
+    fmt=".flac",
+    backend="soundfile",
 )
 val_dataset = TheSessionDataset(
-    "audio_flac", subset=val_subset, sampling_rate=48000, fmt=".flac", backend="soundfile"
+    "audio_flac",
+    subset=val_subset,
+    sampling_rate=48000,
+    fmt=".flac",
+    backend="soundfile",
 )
 test_dataset = TheSessionDataset(
-    "audio_flac", subset=test_subset, sampling_rate=48000, fmt=".flac", backend="soundfile"
+    "audio_flac",
+    subset=test_subset,
+    sampling_rate=48000,
+    fmt=".flac",
+    backend="soundfile",
 )
 
 print("Training data", len(train_dataset))
@@ -32,8 +44,8 @@ print("Test data", len(test_dataset))
 model = TheSessionModel()
 model.load_ckpt()
 
-model.toggle_gradients(False)
-model.toggle_gradients(True, ["clap_model.model.audio_projection"])
+model.toggle_gradients(False, verbose=False)
+model.toggle_gradients(True, ["clap_model.model.audio_projection"], verbose=False)
 
 # Training
 criterion = NTXentLoss(temperature=0.01)
@@ -45,10 +57,11 @@ train_model(
     val_dataset,
     criterion,
     optimizer,
-    epochs=10,
+    epochs=20,
     device="cuda",
     batch_size=32,
-    num_workers=5,
-    destination="training/transfer_learning_audio_projection.csv",
-    best_model_path="models/transfer_learning_audio_projection.pt",
+    num_workers=6,
+    history_path="training/step1.csv",
+    best_model_path="models/step1_best.pt",
+    last_model_path="models/step1_last.pt",
 )

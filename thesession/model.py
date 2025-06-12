@@ -38,7 +38,10 @@ class TheSessionModel(torch.nn.Module):
         torch.save(self.state_dict(), file)
 
     def toggle_gradients(
-        self, requires_grad: bool = False, parameters: list[str] | None = None
+        self,
+        requires_grad: bool = False,
+        parameters: list[str] | None = None,
+        verbose: bool = True,
     ):
         for name, param in self.named_parameters():
             if parameters:
@@ -47,10 +50,11 @@ class TheSessionModel(torch.nn.Module):
                 toggle = True
 
             if toggle:
-                print(
-                    "Enabling" if requires_grad else "Disabling",
-                    "gradient for parameter",
-                    name,
-                )
+                if verbose:
+                    print(
+                        "Enabling" if requires_grad else "Disabling",
+                        "gradient for parameter",
+                        name,
+                    )
 
                 param.requires_grad = requires_grad
