@@ -42,12 +42,13 @@ print("Test data", len(test_dataset))
 
 # Model
 model = TheSessionModel()
-model.load("models/step2_best.pt")
+model.load("models/step4_best.pt")
 
 model.toggle_gradients(False, verbose=False)
 model.toggle_gradients(
     True,
     [
+        "clap_model.model.audio_branch.layers.3",
         "clap_model.model.audio_branch.norm",
         "clap_model.model.audio_branch.tscam_conv",
         "clap_model.model.audio_branch.head",
@@ -70,7 +71,7 @@ train_model(
     device="cuda",
     batch_size=32,
     num_workers=6,
-    history_path="training/step3.csv",
-    best_model_path="models/step3_best.pt",
-    last_model_path="models/step3_last.pt",
+    history_path="training/step5.csv",
+    best_model_path="models/step5_best.pt",
+    last_model_path="models/step5_last.pt",
 )
