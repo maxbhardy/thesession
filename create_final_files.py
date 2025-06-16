@@ -3,6 +3,7 @@ import pathlib
 import re
 
 import music21
+import func_timeout
 import pandas as pd
 import numpy as np
 
@@ -33,6 +34,7 @@ if mpi_rank == 0:
     SELECT TuneVersionID, TuneTitle, TuneVersion
     FROM TuneVersions
     JOIN Tunes USING (TuneID)
+    WHERE TuneVersionID != 20508
     ORDER BY TuneVersionID
     """
 
@@ -61,16 +63,22 @@ for row in tunes.itertuples():
 
     if not (root / filename).with_suffix(".flac").exists():
         try:
-            ABCMusicConverter(row.TuneVersion, filename, root).to_flac(
-                instrument="piano",
-                tempo=180,
-                max_notes=300,
-                cut_silence=30,
-                start=0,
-                duration=60,  # 1 minute
-                sampling_rate=16000,
-                audio_channels=1,
-                clean_files=True,
+            converter = ABCMusicConverter(row.TuneVersion, filename, root)
+
+            func_timeout.func_timeout(
+                30,
+                converter.to_flac,
+                kwargs=dict(
+                    instrument="piano",
+                    tempo=180,
+                    max_notes=300,
+                    cut_silence=30,
+                    start=0,
+                    duration=60,  # 1 minute
+                    sampling_rate=16000,
+                    audio_channels=1,
+                    clean_files=True,
+                )
             )
             print(row.TuneVersionID, row.TuneTitle)
         except:
