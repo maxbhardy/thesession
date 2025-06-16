@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  thesession-db:
+    build:
+      context: ./thesession-db
+    container_name: thesession-db
+    env_file:
+      - ./thesession-db/.env
+    ports:
+      - "15432:5432"
+    volumes:
+      - thesession-db-volume:/var/lib/postgresql/data
+
+volumes:
+  thesession-db-volume:
+
+# podman compose --podman-run-args="--replace" up --build

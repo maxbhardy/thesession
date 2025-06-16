@@ -71,3 +71,49 @@ class TheSessionDataset(torch.utils.data.Dataset):
         selected = self.prng.choice(self.records[idx], size=2, replace=False)
 
         return self.load_audio(selected[0]), self.load_audio(selected[1])
+
+
+class TheSessionFinalDataset(torch.utils.data.Dataset):
+    root_dir: pathlib.Path
+    sampling_rate: int
+    records: list[pathlib.Path]
+    device: str | None
+    backend: str | None
+
+    def __init__(
+        self,
+        root_dir: str | pathlib.Path,
+        sampling_rate: int = 16000,
+        device: str | None = None,
+        fmt: str = ".mp3",
+        backend: str | None = None,
+    ):
+        self.root_dir = pathlib.Path(root_dir)
+        self.sampling_rate = sampling_rate
+        self.device = device
+        self.backend = backend
+
+        self.records = []
+
+        for file in self.root_dir.glob(f"**/*{fmt}"):
+            self.records.append(file)
+
+    def __len__(self) -> int:
+        return len(self.records)
+
+    def load_audio(self, filepath: str | pathlib.Path) -> torch.Tensor:
+        waveform, sr = torchaudio.load(filepath, backend=self.backend)
+
+        if self.device:
+            waveform = waveform.to(self.device)
+
+        if sr != self.sampling_rate:
+            waveform = torchaudio.functional.resample(waveform, sr, self.sampling_rate)
+
+        return waveform.mean(dim=0)
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        # Load the file
+        record_id = torch.tensor(int(self.records[idx].stem))
+
+        return record_id, self.load_audio(self.records[idx])
