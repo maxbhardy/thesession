@@ -74,16 +74,21 @@ class TheSessionRetriever:
         if self.device:
             signal = signal.to(self.device)
 
+        # Resample
         if sr != self.sampling_rate:
             signal = torchaudio.functional.resample(signal, sr, self.sampling_rate)
 
+        # Convert to mono
+        signal = signal.mean(dim=0)
+
+        # Cut/repeat to fix duration
         if duration:
             length = len(signal)
             expected_length = int(np.round(duration * self.sampling_rate))
             repeats = int(np.ceil(expected_length / length))
-            signal = torch.tile(signal, repeats)[:expected_length]
+            signal = torch.tile(signal, (repeats,))[:expected_length]
 
-        return signal.mean(dim=0)
+        return signal
 
     def compute_embedding(
         self, data: torch.Tensor, unsqueeze: bool = False
