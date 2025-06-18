@@ -67,7 +67,7 @@ class TheSessionRetriever:
         """
 
     def load_audio(
-        self, filepath: str | pathlib.Path, duration: int | None = None
+        self, filepath: str | pathlib.Path, duration: int | None = None, signal_multiplier: int | None = None, skip_start: int | None = None
     ) -> torch.Tensor:
         signal, sr = torchaudio.load(filepath, backend=self.backend)
 
@@ -80,6 +80,14 @@ class TheSessionRetriever:
 
         # Convert to mono
         signal = signal.mean(dim=0)
+
+        # Multiply by multiplier
+        if signal_multiplier:
+            signal = signal * signal_multiplier
+
+
+        if skip_start:
+            signal = signal[skip_start * self.sampling_rate:]
 
         # Cut/repeat to fix duration
         if duration:
@@ -99,11 +107,11 @@ class TheSessionRetriever:
             return self.model(data)
 
     def __call__(
-        self, filepath: str | pathlib.Path, limit: int = 5, duration: int | None = None
+        self, filepath: str | pathlib.Path, limit: int = 5, **kwargs
     ) -> pd.DataFrame:
         # Load audio into tensor
         filepath = pathlib.Path(filepath)
-        signal = self.load_audio(filepath, duration=duration)
+        signal = self.load_audio(filepath, **kwargs)
 
         # Compute embedding of audio file
         embedding = self.compute_embedding(signal, unsqueeze=True)
