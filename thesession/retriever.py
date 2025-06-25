@@ -1,12 +1,26 @@
 import pathlib
 import psycopg
+import re
+import shutil
 
 import numpy as np
 import torch
 import torchaudio
 import pandas as pd
+from collections.abc import Iterable
 
 from .model import TheSessionModel
+from .converter import ABCMusicConverter
+
+def sanitize_title(title: str) -> str:
+    # Replace spaces with underscores
+    title = title.replace(" ", "_")
+
+    # Remove any character that is NOT alphanumeric, underscore, hyphen, or dot
+    title = re.sub(r"[^A-Za-z0-9_\-\.]", "", title)
+
+    # Optionally, truncate length to e.g. 100 chars
+    return title[:100].lower()
 
 
 def get_database_url(
@@ -66,6 +80,17 @@ class TheSessionRetriever:
         LIMIT %s
         """
 
+        self.generate_audio_query = """
+        SELECT
+            TuneID,
+            TuneVersionID,
+            TuneTitle,
+            TuneVersion
+        FROM TuneVersions
+        JOIN Tunes USING (TuneID)
+        WHERE TuneVersionID IN ({placeholders})
+        """
+
     def load_audio(
         self,
         filepath: str | pathlib.Path,
@@ -104,6 +129,52 @@ class TheSessionRetriever:
             signal = torch.tile(signal, (repeats,))[:expected_length]
 
         return signal
+
+    def generate_audio(self, version_ids: int | Iterable[int], destination: str | pathlib.Path = ".", fmt: str = "mp3", replace: bool = False, **kwargs):
+        destination = pathlib.Path(destination)
+
+        if replace and destination.exists():
+            shutil.rmtree(destination)
+
+        destination.mkdir(exist_ok=True, parents=True)
+
+        if isinstance(version_ids, int):
+            version_ids = [version_ids]
+
+
+        with psycopg.connect(self.database_url) as con:
+            query = self.generate_audio_query.format(
+                placeholders=", ".join(["%s"] * len(version_ids))
+            )
+            cursor = con.execute(query, (*version_ids,))
+            rows = cursor.fetchall()
+
+        df = pd.DataFrame(
+            rows,
+            columns=[
+                "TuneID",
+                "TuneVersionID",
+                "TuneTitle",
+                "TuneVersion",
+            ],
+        )
+
+        for row in df.itertuples():
+            title = sanitize_title(row.TuneTitle)
+            filename = f"{row.TuneID}_{title}_{row.TuneVersionID}"
+
+            converter = ABCMusicConverter(row.TuneVersion, filename, destination)
+
+            if fmt == "midi":
+                converter.to_midi(**kwargs)
+            elif fmt == "wav":
+                converter.to_wav(clean_files=True, **kwargs)
+            elif fmt == "mp3":
+                converter.to_mp3(clean_files=True, **kwargs)
+            elif fmt == "flac":
+                converter.to_flac(clean_files=True, **kwargs)
+            else:
+                raise RuntimeError(f"Unknown format {fmt}")
 
     def compute_embedding(
         self, data: torch.Tensor, unsqueeze: bool = False

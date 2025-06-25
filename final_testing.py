@@ -118,4 +118,4 @@ if mpi_rank == 0:
         index=["top1", "top5", "top10"],
     )
 
-    accuracy.to_csv("test/final_test.csv")
+    accuracy.to_csv("testing/final_test.csv")
