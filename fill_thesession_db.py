@@ -11,6 +11,7 @@ from thesession.model import TheSessionModel
 
 dotenv.load_dotenv("thesession-db/.env")
 
+
 def get_database_credentials():
     user = os.getenv("POSTGRES_USER")
     password = os.getenv("POSTGRES_PASSWORD")
@@ -19,6 +20,7 @@ def get_database_credentials():
     url = "localhost"
 
     return f"postgresql://{user}:{password}@{url}:{port}/{db}"
+
 
 sqlite_db = "database2.db"
 
@@ -35,7 +37,7 @@ with psycopg.connect(get_database_credentials()) as con:
     cursor = con.cursor()
     cursor.executemany(
         "INSERT INTO Tunes (TuneID, TuneTitle, TuneAuthor, TuneURL, TuneType, Tunebooks) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-        rows
+        rows,
     )
 
     con.commit()
@@ -53,7 +55,7 @@ with psycopg.connect(get_database_credentials()) as con:
     cursor = con.cursor()
     cursor.executemany(
         "INSERT INTO TuneAliases (TuneAliasID, TuneID, TuneAlias) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-        rows
+        rows,
     )
 
     con.commit()
@@ -72,7 +74,7 @@ with psycopg.connect(get_database_credentials()) as con:
     cursor = con.cursor()
     cursor.executemany(
         "INSERT INTO TuneVersions (TuneVersionID, TuneID, TuneVersion) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-        rows
+        rows,
     )
 
     con.commit()
@@ -99,14 +101,15 @@ model.eval()
 for record_ids, records in data_loader:
     embeddings = model(records)
 
-    results = [(embeddings[i].cpu().tolist(), record_ids[i].item()) for i in range(len(record_ids))]
+    results = [
+        (embeddings[i].cpu().tolist(), record_ids[i].item())
+        for i in range(len(record_ids))
+    ]
 
     with psycopg.connect(get_database_credentials()) as con:
         cursor = con.cursor()
 
         cursor.executemany(
             "UPDATE TuneVersions SET TuneVersionEmbedding = %s WHERE TuneVersionID = %s",
-            results
+            results,
         )
-
-    

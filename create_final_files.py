@@ -78,7 +78,7 @@ for row in tunes.itertuples():
                     sampling_rate=16000,
                     audio_channels=1,
                     clean_files=True,
-                )
+                ),
             )
             print(row.TuneVersionID, row.TuneTitle)
         except:

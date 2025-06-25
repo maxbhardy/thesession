@@ -43,7 +43,7 @@ class TheSessionRetriever:
         self.backend = backend
         self.device = device
 
-        self.model = TheSessionModel()
+        self.model = TheSessionModel(device=self.device)
         self.model.toggle_gradients(False, verbose=False)
         self.model.load(model_weights)
         self.model.eval()
@@ -67,9 +67,17 @@ class TheSessionRetriever:
         """
 
     def load_audio(
-        self, filepath: str | pathlib.Path, duration: int | None = None, signal_multiplier: int | None = None, skip_start: int | None = None
+        self,
+        filepath: str | pathlib.Path,
+        duration: int | None = None,
+        signal_multiplier: int | None = None,
+        skip_start: int | None = None,
+        backend: str | None = None,
     ) -> torch.Tensor:
-        signal, sr = torchaudio.load(filepath, backend=self.backend)
+        if not backend:
+            backend = self.backend
+
+        signal, sr = torchaudio.load(filepath, backend=backend)
 
         if self.device:
             signal = signal.to(self.device)
@@ -85,9 +93,8 @@ class TheSessionRetriever:
         if signal_multiplier:
             signal = signal * signal_multiplier
 
-
         if skip_start:
-            signal = signal[skip_start * self.sampling_rate:]
+            signal = signal[skip_start * self.sampling_rate :]
 
         # Cut/repeat to fix duration
         if duration:
