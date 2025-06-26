@@ -1,0 +1,27 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table Tunes {
+  TuneID integer [primary key]
+  TuneTitle varchar(200)
+  TuneAuthor varchar(200)
+  TuneURL varchar(200) [unique]
+  TuneType varchar(200)
+  Tunebooks integer
+}
+
+Table TuneAliases {
+  TuneAliasID integer [primary key]
+  TuneID integer
+  TuneAlias varchar(200)
+}
+
+Table TuneVersions {
+  TuneVersionID integer [primary key]
+  TuneID integer
+  TuneVersion varchar(20000)
+  TuneVersionEmbedding vector(512)
+}
+
+Ref: Tunes.TuneID < TuneAliases.TuneID
+Ref: Tunes.TuneID < TuneVersions.TuneID
