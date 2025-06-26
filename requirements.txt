@@ -1,0 +1,12 @@
+librosa ~= 0.11
+music21 ~=9.7
+soundfile ~= 0.13
+torch ~= 2.7
+torchaudio ~= 2.7
+laion_clap ~= 1.1
+psycopg ~= 3.2
+numpy ~= 1.26
+pandas ~= 2.2
+matplotlib ~= 3.10
+playwright ~= 1.52
+beautifulsoup4 ~= 4.13
