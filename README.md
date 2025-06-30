@@ -1,3 +1,3 @@
 # thesession
 
-Après avoir déplacé le .git dans le bon dossier...
+Reconnaissance automatique de mélodies traditionnelles irlandaises
